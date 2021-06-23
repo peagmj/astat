@@ -1,6 +1,6 @@
 # astat
-Telegram Bot for agentstats.com written in Python 3. /n
-No Databas eneeded./n
+Telegram Bot for agentstats.com written in Python 3. </br>
+No Databas eneeded.
 copy secrets.example.py to secrets.py and fill your secrets.
 
 create a crontab and run for Testmode:
