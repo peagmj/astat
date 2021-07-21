@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 #
@@ -35,7 +35,8 @@ emoji = {"thumbUp": u"👍",
 		"bomb": u"💣",
 		"military_medal": u"🎖",
 		"enl": u"🟢",
-		"res": u"🔵"
+		"res": u"🔵",
+		"zap": u"⚡️"
 	}
 
 ranking_emoji = {
@@ -617,7 +618,7 @@ stattypes = [#"ap",
 #              "last_submit"
 	]
 
-toutput = {
+mtext = {
 	"T1": {
 		"EN":"{0}The <b>Top-{1}</b> in {2} ({3}) {4}: \n",
 		"DE":"{0}Die <b>Top-{1}</b> bei {2} ({3}) {4}: \n"
@@ -681,14 +682,17 @@ def get_new_dict_stats(group,Timespan=""):
 def get_ordered_dict_stats(group,Ticket,Timespan="week"):
 	return OrderedDict(sorted(get_new_dict_stats(group,Timespan).items(),key = lambda tup: (tup[1][Ticket], tup[1][Ticket]), reverse = True))
 	
-def get_daily_stattype():
+def get_daily_stattype(given_stattype):
 	global Logging
 	DayOfMonth= strftime("%d", gmtime())
-	if Logging : print ("Tag des Monats: "+ DayOfMonth)
-	x = int(DayOfMonth) % len(stattypes)
-	if Logging : print ("Nummer des gewählten Statistiktyps: "+ str(x))
-	if Logging : print ("gewählter Statistiktyp: "+ stattypes[x-1])
-	return stattypes[x-1]
+	if given_stattype == "":
+		if Logging : print ("Tag des Monats: "+ DayOfMonth)
+		x = int(DayOfMonth) % len(stattypes)
+		if Logging : print ("Nummer des gewählten Statistiktyps: "+ str(x))
+		if Logging : print ("gewählter Statistiktyp: "+ stattypes[x-1])
+		return stattypes[x-1]
+	else: 
+		return given_stattype
 
 def get_url(url):
     response = requests.get(url)
@@ -791,10 +795,11 @@ def send_TGRecursionBadge(Badge, Caption=""):
 			
 def send_Daily_stats(group,given_stattype,MaxAgentsShown,Timespan):
 	global Logging
-	if given_stattype == "":
-		daily_stattype = get_daily_stattype()
-	else:
-		daily_stattype = given_stattype
+	sum_green= 0
+	sum_blue=0
+	count_blue=0
+	count_green=0
+	daily_stattype = get_daily_stattype(given_stattype)
 	#daily_stattype = "lifetime_ap"
 	if Logging : print(daily_stattype)
 	ordered_dict_stats= get_ordered_dict_stats(group,daily_stattype,Timespan)
@@ -802,39 +807,26 @@ def send_Daily_stats(group,given_stattype,MaxAgentsShown,Timespan):
 	
 	agentlist= list(ordered_dict_stats.keys())
 	x=0
-	daily_message=toutput["T1"][language].format(emoji["trophy"],str(MaxAgentsShown),daily_stattype ,Badges[daily_stattype]["Name"],timespans[Timespan][language])
+	daily_message=mtext["T1"][language].format(emoji["trophy"],str(MaxAgentsShown),daily_stattype ,Badges[daily_stattype]["Name"],timespans[Timespan][language])
 	for agent in agentlist:  
 		x=x+1
-		daily_message= daily_message + "" + ranking_emoji[x]+emoji[str(ordered_dict_stats[agent]["faction"])] + " <b>" + agent.ljust(20," ") + "</b>\t"+ locale.format_string('%d',ordered_dict_stats[agent][daily_stattype],1) +" \n"
-		if x == MaxAgentsShown: 
-			break
+		if x <= MaxAgentsShown:
+			daily_message= daily_message + "" + ranking_emoji[x]+emoji[str(ordered_dict_stats[agent]["faction"])] + " <b>" + agent.ljust(20," ") + "</b>\t"+ locale.format_string('%d',ordered_dict_stats[agent][daily_stattype],1) +" \n"
+		if ordered_dict_stats[agent]["faction"] == "enl":
+			sum_green= sum_green + ordered_dict_stats[agent][daily_stattype]
+			count_green = count_green + 1
+		elif ordered_dict_stats[agent]["faction"] == "res":
+			sum_blue= sum_blue + ordered_dict_stats[agent][daily_stattype]
+			count_blue = count_blue + 1
+#		if x == MaxAgentsShown: 
+#			break
+	if sum_green> sum_blue:
+		daily_message= daily_message + emoji["enl"]+ locale.format_string('%d',sum_green,1)+ " ["+locale.format_string('%d',count_green,1)+"]"+emoji["zap"]+"["+locale.format_string('%d',count_blue,1)+"] " + locale.format_string('%d',sum_blue,1) + emoji["res"] +"\n"
+	else:
+		daily_message= daily_message + emoji["res"]+ str(sum_blue)+ " ["+locale.format_string('%d',count_blue,1)+"]"+emoji["zap"]+"["+locale.format_string('%d',count_green,1)+"] " + str(sum_green) + emoji["enl"] +"\n"
 	if Logging : print(daily_message)
 	send_TGMessage(daily_message,get_chat_id())
 
-def send_WWC_stats(given_stattype):
-	global Logging
-	global MaxAgentsShown 
-	MaxAgentsShown = 20
-	if given_stattype == "":
-		daily_stattype = get_daily_stattype()
-	else:
-		daily_stattype = given_stattype
-	#daily_stattype = "lifetime_ap"
-	if Logging : print(daily_stattype)
-	ordered_dict_stats= get_ordered_dict_stats(daily_stattype,"custom")
-	#if Logging : print(json.dumps(ordered_dict_stats, indent = 4, sort_keys=False))
-	agentlist= list(ordered_dict_stats.keys())
-	x=0
-	daily_message=emoji["trophy"]+"The <b>Top-"+str(MaxAgentsShown)+"</b>  "+daily_stattype + " ("+Badges[daily_stattype]["Name"]+") in the custom interval: \n"
-	for agent in agentlist:  
-		if Logging : print("agentname: "+agent)
-		x=x+1
-		daily_message= daily_message + "" + ranking_emoji[x]+emoji[str(ordered_dict_stats[agent]["faction"])] + " <b>" + agent.ljust(18," ") + "</b>\t"+ locale.format_string('%d',ordered_dict_stats[agent][daily_stattype],1) +" \n"
-		if x == MaxAgentsShown: 
-			break
-	#if Logging : print(daily_message)
-	send_TGMessage(daily_message,get_chat_id())
-	
 def check_LevelUp():
 	global Logging
 	filename = "last_levelstats_"+group+".json"
@@ -848,22 +840,26 @@ def check_LevelUp():
 	
 	if Logging : print("Running...")
 	last_agentlist = list(last_reference_stats.keys()) 
-	for agent in last_agentlist:  	
-		LevelUpMessage = ""
-		if new_stats[agent]["level"] > last_reference_stats[agent]["level"]:
-			if Logging : print (agent)
-			LevelUpMessage = toutput["T2"][language].format(emoji["thumbUp"],str(agent),str(new_stats[agent]["level"]))
-			if Logging : print(LevelUpMessage)
-			send_TGMessage(LevelUpMessage,get_chat_id())
-			levelup_file = os.sep.join(["badges_webp", "levelup{}.jpg".format(str(new_stats[agent]["level"]))])
-			send_TGImage(levelup_file)
+	new_agentlist = list(new_stats.keys())
+	for agent in last_agentlist:
+		if Logging : print("Running... {}".format(agent))
+		if (agent in new_agentlist):  	
+			LevelUpMessage = ""
+			if new_stats[agent]["level"] > last_reference_stats[agent]["level"]:
+				if Logging : print (agent)
+				LevelUpMessage = mtext["T2"][language].format(emoji["thumbUp"],str(agent),str(new_stats[agent]["level"]))
+				if Logging : print(LevelUpMessage)
+				send_TGMessage(LevelUpMessage,get_chat_id())
+				levelup_file = os.sep.join(["badges_webp", "levelup{}.jpg".format(str(new_stats[agent]["level"]))])
+				send_TGImage(levelup_file)
+		else:
+			print ("Agent {} is not in list anymore.".format(agent))
 	with open(filename, "w") as outfile:
 		json.dump(new_stats, outfile, ensure_ascii=False, indent=4)
 
 def check_Badges():
 	global Logging
 	filename = "last_badgestats_"+group+".json"
-	
 	new_stats = get_new_dict_stats(group,"all")
 	try:
 		with open(filename) as json_file:
@@ -874,25 +870,30 @@ def check_Badges():
 			json.dump(new_stats, outfile, ensure_ascii=False, indent=4)
 		exit(0)
 
-	if Logging : print("Running...")
-	last_agentlist = list(last_reference_stats.keys()) 
-	for agent in last_agentlist: 
-		for Badge in Badges:
-			LevelUpMessage = ""
-			#print (Badge)
-			for BadgeLvl in BadgeLvlList:
-				if int(new_stats[agent][Badge]) >= int(Badges[Badge][BadgeLvl]) and int(last_reference_stats[agent][Badge]) < int(Badges[Badge][BadgeLvl]):
-					if Logging : print ("Agent: "+agent + " BadgeLvl= " + BadgeLvl)
-					LevelUpMessage = toutput["T3"][language].format(emoji["thumbUp"],str(agent),str(Badge), Badges[Badge]["Name"], str(BadgeLvl),emoji["thumbUp"])
+	last_agentlist = list(last_reference_stats.keys())
+	new_agentlist = list(new_stats.keys())
+	for agent in last_agentlist:
+		if Logging : print("Running... {}".format(agent))
+		if (agent in new_agentlist):
+			for Badge in Badges:
+				LevelUpMessage = ""
+				#if Logging : print (Badge)
+				for BadgeLvl in BadgeLvlList:
+					#if Logging : print (BadgeLvl)
+					if int(new_stats[agent][Badge]) >= int(Badges[Badge][BadgeLvl]) and int(last_reference_stats[agent][Badge]) < int(Badges[Badge][BadgeLvl]):
+						if Logging : print ("Agent: "+agent + " BadgeLvl= " + BadgeLvl)
+						LevelUpMessage = mtext["T3"][language].format(emoji["thumbUp"],str(agent),str(Badge), Badges[Badge]["Name"], str(BadgeLvl),emoji["thumbUp"])
+						if Logging : print(LevelUpMessage)
+						send_TGMessage(LevelUpMessage,get_chat_id())
+						send_TGBadge(Badge,BadgeLvl, Badges[Badge]["Name"]+": "+str(Badges[Badge][BadgeLvl]))
+				if int(int(last_reference_stats[agent][Badge])/int(Badges[Badge]["Black"])) >0 and int(int(new_stats[agent][Badge])/int(Badges[Badge]["Black"])) != int(int(last_reference_stats[agent][Badge])/int(Badges[Badge]["Black"])):
+					if Logging : print (agent)
+					LevelUpMessage = mtext["T4"][language].format(emoji["thumbUp"], str(agent), str(int(int(new_stats[agent][Badge])/int(Badges[Badge]["Black"]))),  str(Badge), Badges[Badge]["Name"])
 					if Logging : print(LevelUpMessage)
 					send_TGMessage(LevelUpMessage,get_chat_id())
-					send_TGBadge(Badge,BadgeLvl, Badges[Badge]["Name"]+": "+str(Badges[Badge][BadgeLvl]))
-			if int(int(last_reference_stats[agent][Badge])/int(Badges[Badge]["Black"])) >0 and int(int(new_stats[agent][Badge])/int(Badges[Badge]["Black"])) != int(int(last_reference_stats[agent][Badge])/int(Badges[Badge]["Black"])):
-				if Logging : print (agent)
-				LevelUpMessage = toutput["T4"][language].format(emoji["thumbUp"], str(agent), str(int(int(new_stats[agent][Badge])/int(Badges[Badge]["Black"]))),  str(Badge), Badges[Badge]["Name"])
-				if Logging : print(LevelUpMessage)
-				send_TGMessage(LevelUpMessage,get_chat_id())
-				send_TGRecursionBadge(Badge, "")
+					send_TGRecursionBadge(Badge, "")
+		else:
+			print ("Agent {} is not in list anymore.".format(agent))
 	with open(filename, "w") as outfile:
 		json.dump(new_stats, outfile, ensure_ascii=False, indent=4)
 
@@ -964,7 +965,7 @@ def main():
 				print_CLI_Help()
 				sys.exit(2)
 		elif current_argument in ("-i", "--interval"):
-			if current_value in ["custom","week"]:
+			if current_value in ["custom","week","all"]:
 				Timespan = current_value
 			else:
 				print("Parameter --interval {} invalid".format(current_value))
@@ -987,8 +988,6 @@ def main():
 	
 	if Check =="DailyStats":
 		send_Daily_stats(group,given_stattype,MaxAgentsShown,Timespan)
-	elif Check =="WWCStats":
-		send_WWC_stats(given_stattype)
 	elif Check == "LevelUp":
 			check_LevelUp()
 	elif Check == "Badges":
