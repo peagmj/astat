@@ -1,4 +1,4 @@
-# astat
+# astat  -  Telegram Bot for agent-stats.com
 Telegram Bot for agentstats.com written in Python 3. </br>
 No Databas eneeded. </br>
 copy secrets.example.py to secrets.py and fill your secrets. </br>
